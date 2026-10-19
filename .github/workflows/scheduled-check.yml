@@ -1,0 +1,50 @@
+name: Scheduled check
+
+# Re-downloads every listed release once a week and opens (or updates) an issue if a download is no longer available
+# or its content changed.
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: scheduled-check
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check all plugins
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate all manifests and releases
+        id: validate
+        continue-on-error: true
+        run: python3 scripts/validate.py --all --full --report "$RUNNER_TEMP/report.md"
+
+      - name: Report problems
+        if: steps.validate.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          body_file="$RUNNER_TEMP/issue.md"
+          { cat "$RUNNER_TEMP/report.md"; echo; echo "Workflow run: $RUN_URL"; } > "$body_file"
+          gh label create marketplace-check --color B60205 --description "Problems found by the scheduled check" --force
+          issue="$(gh issue list --label marketplace-check --state open --limit 1 --json number --jq '.[0].number // empty')"
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body-file "$body_file"
+          else
+            gh issue create --title "Scheduled marketplace check found problems" --label marketplace-check --body-file "$body_file"
+          fi
+          exit 1

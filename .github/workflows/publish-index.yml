@@ -1,0 +1,58 @@
+name: Publish index
+
+# Regenerates plugins.json after manifests were merged into main.
+# plugins.json is not part of the trigger paths, so the commit below doesn't trigger this workflow again.
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "plugins/**"
+      - "scripts/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-index
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish plugins.json
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # A GitHub App token is used (instead of GITHUB_TOKEN) because the app is allowed to bypass the branch ruleset
+      # that requires pull requests for main
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.MARKETPLACE_BOT_APP_ID }}
+          private-key: ${{ secrets.MARKETPLACE_BOT_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Build index
+        run: python3 scripts/build_index.py
+
+      - name: Commit and push plugins.json
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          if git diff --quiet -- plugins.json; then
+            echo "plugins.json is up to date"
+            exit 0
+          fi
+          user_id="$(gh api "/users/${APP_SLUG}[bot]" --jq .id)"
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${user_id}+${APP_SLUG}[bot]@users.noreply.github.com"
+          git add plugins.json
+          git commit -m "Update plugins.json"
+          git push origin HEAD:main

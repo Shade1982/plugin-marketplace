@@ -1,0 +1,44 @@
+name: Validate plugin manifests
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    # The job name is used as required status check in the branch ruleset - don't rename it without updating the ruleset
+    name: Validate plugin manifests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: pr
+          fetch-depth: 0
+          persist-credentials: false
+
+      # The validation scripts are always taken from the base branch, so a pull request can't change the rules it is
+      # validated against. Plugin JARs are only downloaded and inspected, never executed.
+      - name: Checkout validation scripts (base branch)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: base
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - name: Validate changed manifests
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: python3 base/scripts/validate.py --repo pr --base-ref "$BASE_SHA" --pr-author "$PR_AUTHOR"
+
+      - name: Check that the index can be built
+        run: python3 base/scripts/build_index.py --repo pr --output "$RUNNER_TEMP/plugins.json"
