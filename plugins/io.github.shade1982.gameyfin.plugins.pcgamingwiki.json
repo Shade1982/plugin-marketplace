@@ -1,0 +1,30 @@
+{
+  "$schema": "../schema/plugin-manifest.schema.json",
+  "id": "io.github.shade1982.gameyfin.plugins.pcgamingwiki",
+  "name": "PCGamingWiki Metadata",
+  "shortDescription": "Fetches game metadata from PCGamingWiki.",
+  "description": "Searches PCGamingWiki for game metadata, including descriptions, developers, publishers, release dates, and supported platforms. Intended as a supplementary provider alongside a primary metadata source.",
+  "provider": "Shade1982",
+  "license": "GPL-2.0",
+  "projectUrl": "https://github.com/Shade1982/gameyfin-pcgw-metadata-plugin",
+  "logo": "https://raw.githubusercontent.com/Shade1982/gameyfin-pcgw-metadata-plugin/main/src/main/resources/logo.svg",
+  "types": [
+    "GameMetadataProvider"
+  ],
+  "tags": [
+    "metadata",
+    "pcgamingwiki"
+  ],
+  "maintainers": [
+    "Shade1982"
+  ],
+  "releases": [
+    {
+      "version": "0.1.10",
+      "date": "2026-10-20",
+      "requires": ">=2.5.0",
+      "url": "https://github.com/Shade1982/gameyfin-pcgw-metadata-plugin/releases/download/v0.1.10/pcgamingwiki-plugin-0.1.10.jar",
+      "sha512sum": "4287e14e61703eafdc08cc531c34a9b97f03f911bc3f18a81a7fc94a3354ea5960b705644454d3725204af37ce3d1f34f9f1e94062e3d39796c36c84ffe9bd52"
+    }
+  ]
+}
